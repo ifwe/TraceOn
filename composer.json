@@ -1,0 +1,19 @@
+{
+    "license": "Apache-2.0",
+    "description": "A simple class to log calls to instance/static methods.",
+    "keywords": ["mocks", "debugging", "traceon", "runkit", "runkit7"],
+    "type":    "library",
+    "require": {
+        "php": ">= 7.0",
+        "ext-runkit": ">=1.0.5a2"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "~6.0"
+    },
+    "autoload": {
+        "psr-4": {"TraceOn\\": "src/TraceOn"}
+    },
+    "autoload-dev": {
+        "psr-4": {"TraceOn\\Tests\\": "tests"}
+    }
+}
