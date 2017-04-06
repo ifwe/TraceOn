@@ -1,0 +1,11 @@
+language: php
+php:
+  - 7.1
+  - 7.0
+
+before_script:
+  - ci/install_runkit_for_php_version.sh
+  - composer install
+
+script:
+  - php vendor/bin/phpunit tests

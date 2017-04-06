@@ -3,6 +3,8 @@ TraceOn
 
 ## Overview
 
+[![Build Status](https://travis-ci.org/runkit7/TraceOn.svg?branch=master)](https://travis-ci.org/runkit7/TraceOn)
+
 A simple PHP utility to trace(investigate) invocations of instance/static/global methods (and log those calls).
 This requires [runkit7 (fork of the runkit PECL)](https://github.com/runkit7/runkit7).
 
