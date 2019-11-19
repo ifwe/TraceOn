@@ -19,7 +19,7 @@ Tyson Andre
 
 - PHP version 7.0 or greater
 - [runkit7 (fork of runkit)](https://github.com/runkit7/runkit7) must be installed and enabled.
-- runkit must be enabled in your php.ini settings (`extension=runkit.so)
+- runkit must be enabled in your php.ini settings (`extension=runkit.so`)
 
 ## License
 
