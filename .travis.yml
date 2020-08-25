@@ -1,11 +1,13 @@
 language: php
 php:
-  - 7.1
-  - 7.0
+  - 7.4
+  - 7.3
+  - 7.2
 
 before_script:
   - ci/install_runkit_for_php_version.sh
   - composer install
 
 script:
-  - php vendor/bin/phpunit tests
+  - vendor/bin/phan
+  - php -d opcache.enable=0 vendor/bin/phpunit tests

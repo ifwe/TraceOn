@@ -11,15 +11,17 @@ This requires [runkit7 (fork of the runkit PECL)](https://github.com/runkit7/run
 Logging for parameters, return types, backtraces, and exceptions is enabled by default.
 Code using this utility can disable or replace the default implementation to log those details.
 
+**NOTE: When using this in recent php versions, disable opcache or opcache optimizations before running php.**
+
 ## Authors
 
 Tyson Andre
 
 ## Requirements
 
-- PHP version 7.0 or greater
-- [runkit7 (fork of runkit)](https://github.com/runkit7/runkit7) must be installed and enabled.
-- runkit must be enabled in your php.ini settings (`extension=runkit.so`)
+- PHP version 7.2 or greater
+- [runkit7](https://github.com/runkit7/runkit7) 3.1.0a1 or greater must be installed and enabled.
+- runkit7 must be enabled in your php.ini settings (`extension=runkit7.so`)
 
 ## License
 
@@ -107,7 +109,7 @@ To attempt this, `runkit.internal_override=On` must be temporarily added to php.
 
 -----
 
-README.md: Copyright 2017 Ifwe Inc.
+README.md: Copyright 2020 Ifwe Inc.
 
 README.md is licensed under a Creative Commons Attribution-ShareAlike 4.0 International License.
 

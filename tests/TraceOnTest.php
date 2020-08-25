@@ -1,8 +1,9 @@
 <?php
 namespace TraceOn\Tests;
 
-use \PHPUnit\Framework\TestCase;
-use \TraceOn\TraceOn;
+use PHPUnit\Framework\TestCase;
+use RuntimeException;
+use TraceOn\TraceOn;
 
 function dummyGlobalFunction(string $arg) {
     return 'dummy' . 'GlobalFunction:' . $arg;
@@ -28,6 +29,13 @@ function dummyGlobalFunction(string $arg) {
  * limitations under the License.
  */
 class TraceOnTest extends TestCase {
+    public static function setUpBeforeClass(): void {
+        parent::setUpBeforeClass();
+        if (extension_loaded('Zend OPcache') && ini_get('opcache.enable') && ini_get('opcache.enable_cli')) {
+            throw new RuntimeException("TraceOn has known issues in some php versions when opcache optimizations are enabled - disable opcache");
+        }
+    }
+
     public function tearDown() {
         parent::tearDown();
         TraceOn::cleanup_all();

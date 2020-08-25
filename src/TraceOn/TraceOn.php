@@ -2,14 +2,18 @@
 
 namespace TraceOn;
 
+use InvalidArgumentException;
+use RuntimeException;
+use Throwable;
+
 /**
  * This class is recommended only for debugging issues involving deeply nested calls, and not for use during normal operations.
  *
- * It uses runkit to print out function arguments, stack traces, and return values, as well as exceptions.
- * Calls to this can be added to an entry point, e.g. to figure out if a deeply nested function is being called,
+ * This is a class which uses runkit7 to print out function calls, stack traces, and return values.
+ * This can be used from the test box, e.g. to figure out if a deeply nested function is being called,
  * what a function is being called with, what it is returning, etc.
  *
- * This library is compatible with php 7.0 and 7.1.
+ * This library is compatible with php 7.1-7.4.
  *
  * This library works with static and instance methods. It has a similar interface to \SimpleStaticMock\SimpleStaticMock.
  * TODO: allow operating on functions by passing in null as a class name.
@@ -42,7 +46,7 @@ namespace TraceOn;
  *
  * ----------------------------------------------------------------------
  *
- * Copyright 2017 Ifwe Inc.
+ * Copyright 2020 Ifwe Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -95,44 +99,44 @@ class TraceOn {
     /** This can be passed in to disable a specific logging type. False can be passed in, to change loggers to noop. */
     const NOOP                     = '\TraceOn\TraceOn::noop';
 
-    /** @var bool */
+    /** @var bool is the function/method instrumented */
     private $_traced = true;
     /** @var ?string - If null, this is a mock of a function instead of a method. */
     private $_className;
-    /** @var string */
+    /** @var string the name of the method/function where the original implementation was moved  */
     private $_methodName;
-    /** @var string */
+    /** @var string method/function name that was mocked */
     private $_originalMethodName;
 
-    /** @var TraceOn[] - Maps full name to path */
+    /** @var array<string,TraceOn> maps method name to the only instance for this method. */
     private static $_registry = [];
 
     /**
      * Start logging backtraces, parameters, and return values of the instance method or static method $className::$methodName, whenever it is called.
-     * @param string $className class name with method to mock
+     * @param ?string $className class name with method to mock (null to mock global functions)
      * @param string $methodName method name to mock
-     * @param array $options
+     * @param array<string,mixed> $options
      */
-    public function __construct($className, $methodName, array $options = []) {
+    public function __construct(?string $className, string $methodName, array $options = []) {
         if ($className === null) {
             $methodName = ltrim($methodName, "\\");
         }
         $key = self::get_key($className, $methodName);
         if (isset(self::$_registry[$key])) {
-            throw new \RuntimeException("Logger for $key already exists");
+            throw new RuntimeException("Logger for $key already exists");
         }
-        if (!extension_loaded('runkit')) {
-            throw new \RuntimeException("Runkit is not installed");
+        if (!extension_loaded('runkit7')) {
+            throw new RuntimeException("Runkit7 is not installed");
         }
         if ($className !== null) {
             if (!class_exists($className)) {
-                throw new \RuntimeException("Failed to load class '$className'");
+                throw new RuntimeException("Failed to load class '$className'");
             }
         } else if (!function_exists($methodName)) {
-            throw new \RuntimeException("Failed to load function '$methodName'");
+            throw new RuntimeException("Failed to load function '$methodName'");
         }
-        $runkitFlags = self::compute_runkit_flags($className, $methodName);
-        $methodSeparator = ($runkitFlags & RUNKIT_ACC_STATIC) ? '::' : '->';
+        $runkitFlags = self::compute_runkit7_flags($className, $methodName);
+        $methodSeparator = ($runkitFlags & RUNKIT7_ACC_STATIC) ? '::' : '->';
         if ($className !== null) {
             $fullMethodName = $className . $methodSeparator . $methodName;
         } else {
@@ -141,12 +145,12 @@ class TraceOn {
 
         $originalMethodName = $methodName . '_original';
         if ($className !== null) {
-            if (!runkit_method_copy($className, $originalMethodName, $className, $methodName)) {
-                throw new \RuntimeException('Failed to copy method');
+            if (!runkit7_method_copy($className, $originalMethodName, $className, $methodName)) {
+                throw new RuntimeException('Failed to copy method');
             }
         } else {
-            if (!runkit_function_copy(ltrim($methodName, "\\"), $originalMethodName)) {
-                throw new \RuntimeException('Failed to copy function');
+            if (!runkit7_function_copy(ltrim($methodName, "\\"), $originalMethodName)) {
+                throw new RuntimeException('Failed to copy function');
             }
         }
         $args = '';  // no args
@@ -156,8 +160,9 @@ class TraceOn {
          * @param string $default
          * @return string callback to invoke for this stage of the method tracing (Before call, after call returns, after call has an exception)
          * Treat passing no value as the default, treat passing falsey value as a no-op, and otherwise, expect a string.
+         * @suppress PhanPluginCanUseReturnType
          */
-        $getOption = function(string $key, $default) use ($options) {
+        $getOption = static function (string $key, string $default) use ($options) {
             if (!array_key_exists($key, $options)) {
                 return $default;
             } else if ($options[$key]) {
@@ -169,19 +174,19 @@ class TraceOn {
         $log_return = $getOption(self::PARAM_RETURN_LOGGER, self::DEFAULT_RETURN_LOGGER);
         $log_exception = $getOption(self::PARAM_EXCEPTION_LOGGER, self::DEFAULT_EXCEPTION_LOGGER);
         if ($log_args && (!is_string($log_args) || !is_callable($log_args))) {
-            throw new \InvalidArgumentException("Expected a callable string (method/function) for TraceOn::PARAM_ARGS_LOGGER, got " . gettype($log_args));
+            throw new InvalidArgumentException("Expected a callable string (method/function) for TraceOn::PARAM_ARGS_LOGGER, got " . gettype($log_args));
         }
         if ($log_return && (!is_string($log_return) || !is_callable($log_return))) {
-            throw new \InvalidArgumentException("Expected a callable string (method/function) for TraceOn::PARAM_RETURN_LOGGER, got " . gettype($log_return));
+            throw new InvalidArgumentException("Expected a callable string (method/function) for TraceOn::PARAM_RETURN_LOGGER, got " . gettype($log_return));
         }
         if ($log_exception && (!is_string($log_exception) || !is_callable($log_exception))) {
-            throw new \InvalidArgumentException("Expected a callable string (method/function) for TraceOn::PARAM_EXCEPTION_LOGGER, got " . gettype($log_exception));
+            throw new InvalidArgumentException("Expected a callable string (method/function) for TraceOn::PARAM_EXCEPTION_LOGGER, got " . gettype($log_exception));
         }
 
         $print_backtrace_repr = ($options[self::PARAM_SHOULD_PRINT_BACKTRACE] ?? true) ? 'true' : 'false';
         if ($className === null) {
             $fullOriginalMethodRepr = $originalMethodName;
-        } else if ($runkitFlags & RUNKIT_ACC_STATIC) {
+        } else if ($runkitFlags & RUNKIT7_ACC_STATIC) {
             $fullOriginalMethodRepr = 'self::' . $originalMethodName;
         } else {
             $fullOriginalMethodRepr = '$this->' . $originalMethodName;
@@ -206,12 +211,12 @@ class TraceOn {
 EOT;
 
         if ($className !== null) {
-            if (!runkit_method_redefine($className, $methodName, $args, $implementation, $runkitFlags)) {
-                throw new \RuntimeException('Failed to redefine method ' . $fullMethodName);
+            if (!runkit7_method_redefine($className, $methodName, $args, $implementation, $runkitFlags)) {
+                throw new RuntimeException('Failed to redefine method ' . $fullMethodName);
             }
         } else {
-            if (!runkit_function_redefine($methodName, $args, $implementation)) {
-                throw new \RuntimeException('Failed to redefine method ' . $fullMethodName);
+            if (!runkit7_function_redefine($methodName, $args, $implementation)) {
+                throw new RuntimeException('Failed to redefine method ' . $fullMethodName);
             }
         }
         $this->_className = $className;
@@ -220,100 +225,116 @@ EOT;
         self::$_registry[$key] = $this;
     }
 
-    // Callback to do nothing
-    public static function noop(...$arguments) { }
+    /**
+     * Callback to do nothing
+     * @param ...$arguments @unused-param
+     * @suppress PhanPluginUseReturnValueNoopVoid
+     */
+    public static function noop(...$arguments): void {
+    }
 
-    public static function log_arguments($fullMethodName, array $args) {
+    /**
+     * @param list<mixed> $args
+     */
+    public static function log_arguments(string $fullMethodName, array $args): void {
         echo "in $fullMethodName : Params : \n";
         var_export($args);
         echo "\\n";
     }
 
-    public static function log_return(string $fullMethodName, $value) {
+    /**
+     * @param mixed $value
+     */
+    public static function log_return(string $fullMethodName, $value): void {
         echo "\nreturn value of $fullMethodName is :\n";
         var_export($value);
         echo "\n\n";
     }
 
-    public static function log_exception(string $fullMethodName, \Throwable $e) {
+    public static function log_exception(string $fullMethodName, Throwable $e): void {
         printf("\ngot exception of class %s for %s : %s\n%s\n\n", get_class($e), $fullMethodName, $e->getMessage(), $e->getTraceAsString());
     }
 
-    public static function log_arguments_json(string $fullMethodName, array $args) {
+    /**
+     * @param list<mixed> $args
+     */
+    public static function log_arguments_json(string $fullMethodName, array $args): void {
         printf("Calling %s: args=%s\n", $fullMethodName, json_encode($args));
     }
 
     /**
      * @param ?string $className (if null, this returns 0)
      * @param string $methodName
-     * @return int $flags to pass to runkit for the signature of the new implementation of the method
+     * @return int $flags to pass to runkit7 for the signature of the new implementation of the method
      */
-    public static function compute_runkit_flags($className, string $methodName) : int {
+    public static function compute_runkit7_flags(?string $className, string $methodName) : int {
         if ($className === null) {
             return 0;
         }
         $method = new \ReflectionMethod($className, $methodName);
         $flags = 0;
         if ($method->isStatic()) {
-          $flags |= RUNKIT_ACC_STATIC;
+          $flags |= RUNKIT7_ACC_STATIC;
         }
         if ($method->isPrivate()) {
-          $flags |= RUNKIT_ACC_PRIVATE;
+          $flags |= RUNKIT7_ACC_PRIVATE;
         } else if ($method->isProtected()) {
-          $flags |= RUNKIT_ACC_PROTECTED;
+          $flags |= RUNKIT7_ACC_PROTECTED;
         } else {
-          $flags |= RUNKIT_ACC_PUBLIC;
+          $flags |= RUNKIT7_ACC_PUBLIC;
         }
         return $flags;
     }
 
     /**
-     * @param ?string $className
-     * @param string $methodName
-     * @return string
+     * @param ?string $className if non-null, the name of the class
+     * @param string $methodName the name of the function/method
      */
-    public static function get_key($className, string $methodName) {
+    public static function get_key(?string $className, string $methodName): string {
         if ($className === null) {
-            return ltrim("\\", $methodName);
+            return ltrim($methodName, "\\");
         }
         return sprintf('%s::%s', ltrim(strtolower($className), "\\"), strtolower($methodName));
     }
 
     /**
      * Stop logging calls to this function.
-     * @return void
      */
-    public function cleanup() {
-        if (!$this->_traced) { return; }
+    public function cleanup(): void {
+        if (!$this->_traced) {
+            return;
+        }
         $key = self::get_key($this->_className, $this->_methodName);
         if ($this->_className !== null) {
-            if (!runkit_method_remove($this->_className, $this->_methodName)) {
-               throw new \RuntimeException('Unmock failed to remove method ' . $key);
+            if (!runkit7_method_remove($this->_className, $this->_methodName)) {
+               throw new RuntimeException('Unmock failed to remove method ' . $key);
             }
-            if (!runkit_method_rename($this->_className, $this->_originalMethodName, $this->_methodName)) {
-               throw new \RuntimeException('Unmock failed rename to restore original method for ' . $key);
+            if (!runkit7_method_rename($this->_className, $this->_originalMethodName, $this->_methodName)) {
+               throw new RuntimeException('Unmock failed rename to restore original method for ' . $key);
             }
         } else {
-            if (!runkit_function_remove($this->_methodName)) {
-               throw new \RuntimeException('Unmock failed to remove function ' . $this->_methodName);
+            if (!runkit7_function_remove($this->_methodName)) {
+               throw new RuntimeException('Unmock failed to remove function ' . $this->_methodName);
             }
-            if (!runkit_function_rename($this->_originalMethodName, $this->_methodName)) {
-               throw new \RuntimeException('Unmock failed rename to restore original function for ' . $this->_methodName);
+            if (!runkit7_function_rename($this->_originalMethodName, $this->_methodName)) {
+               throw new RuntimeException('Unmock failed rename to restore original function for ' . $this->_methodName);
             }
         }
         $this->_traced = false;
         unset(self::$_registry[$key]);
     }
 
+    public function __destruct() {
+        $this->cleanup();
+    }
+
     /**
      * Cleans up all of the TraceOn instances.
-     * @return void
      */
-    public static function cleanup_all() {
+    public static function cleanup_all(): void {
         $entries = self::$_registry;
         foreach ($entries as $entry) {
             $entry->cleanup();
         }
     }
 }
-
