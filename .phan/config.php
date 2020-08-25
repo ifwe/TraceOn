@@ -192,7 +192,6 @@ return [
 
     // A list of files to include in analysis
     'file_list' => [
-        // 'vendor/phpunit/phpunit/src/Framework/TestCase.php',
     ],
 
     // A file list that defines files that will be excluded
@@ -216,7 +215,6 @@ return [
     // your application should be included in this list.
     'directory_list' => [
         'src',
-        'vendor',
     ],
 
     // List of case-insensitive file extensions supported by Phan.
@@ -235,9 +233,52 @@ return [
     //       should be added to the `directory_list` as
     //       to `exclude_analysis_directory_list`.
     "exclude_analysis_directory_list" => [
-        'vendor',
     ],
 
     // A list of plugin files to execute
-    'plugins' => [ ],
+    'plugins' => [
+        'AlwaysReturnPlugin',
+        'DollarDollarPlugin',
+        'UnreachableCodePlugin',
+        'DuplicateArrayKeyPlugin',
+        'PregRegexCheckerPlugin',
+        'PrintfCheckerPlugin',
+        'UseReturnValuePlugin',
+
+        // UnknownElementTypePlugin warns about unknown types in element signatures.
+        'UnknownElementTypePlugin',
+        'DuplicateExpressionPlugin',
+        // warns about carriage returns("\r"), trailing whitespace, and tabs in PHP files.
+        'WhitespacePlugin',
+        // Warn about inline HTML anywhere in the files.
+        'InlineHTMLPlugin',
+        ////////////////////////////////////////////////////////////////////////
+        // Plugins for Phan's self-analysis
+        ////////////////////////////////////////////////////////////////////////
+
+        'NoAssertPlugin',
+        'PossiblyStaticMethodPlugin',
+
+        // 'HasPHPDocPlugin',
+        'PHPDocToRealTypesPlugin',  // suggests replacing (at)return void with `: void` in the declaration, etc.
+        'PHPDocRedundantPlugin',
+        'PreferNamespaceUsePlugin',
+        'EmptyStatementListPlugin',
+
+        // Report empty (not overridden or overriding) methods and functions
+        // 'EmptyMethodAndFunctionPlugin',
+
+        // This should only be enabled if the code being analyzed contains Phan plugins.
+        'PhanSelfCheckPlugin',
+        // Warn about using the same loop variable name as a loop variable of an outer loop.
+        'LoopVariableReusePlugin',
+        // Warn about assigning the value the variable already had to that variable.
+        'RedundantAssignmentPlugin',
+        // These are specific to Phan's coding style
+        'StrictComparisonPlugin',
+        // Warn about `$var == SOME_INT_OR_STRING_CONST` due to unintuitive behavior such as `0 == 'a'`
+        'StrictLiteralComparisonPlugin',
+        'ShortArrayPlugin',
+        'SimplifyExpressionPlugin',
+    ],
 ];
